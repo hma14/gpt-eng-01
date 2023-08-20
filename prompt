@@ -1,0 +1,8 @@
+Create a Single Page Application in HTML and React.js
+Use bootstrap for css
+Create Pagination on backend when rows exceed 10 rows.
+database is AddressBook and document is Users
+the columns of Users: FirstName, LastName, and Sub Object of PrimaryAddress includes StreetAddress, City, Province, PostalCode 
+backend are CRUD endpoints which accesses above AddressBook.Users in mongodb implemented by Python and Flask.
+the UI will display all User list.
+To add new entry by user, an entry input form locates below the User list. All CRUD buttons should be displayed and functions tirggered by clicking buttons will be implemented with React.js.

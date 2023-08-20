@@ -1,0 +1,523 @@
+The core classes, functions, and methods that will be necessary for this project are as follows:
+
+1. Backend (Python/Flask):
+   - `app.py`: The main entry point of the Flask application.
+   - `database.py`: Handles the connection to the MongoDB database and provides CRUD operations for the Users collection.
+   - `models.py`: Defines the data models for the Users collection and its sub-object PrimaryAddress.
+   - `routes.py`: Defines the API routes for CRUD operations on the Users collection.
+
+2. Frontend (React.js):
+   - `App.js`: The main component that renders the UI and manages the state of the application.
+   - `UserList.js`: Renders the list of users and handles pagination.
+   - `UserForm.js`: Renders the form for adding a new user and handles form submission.
+   - `UserItem.js`: Renders an individual user item in the list.
+   - `api.js`: Handles API requests to the backend for CRUD operations.
+
+3. HTML/CSS:
+   - `index.html`: The main HTML file that includes the React app and Bootstrap CSS.
+
+Now let's proceed with creating the files and writing the code.
+
+**app.py**
+```python
+from flask import Flask, jsonify, request
+from flask_cors import CORS
+from database import Database
+from routes import users_bp
+
+app = Flask(__name__)
+CORS(app)
+
+# Connect to the MongoDB database
+db = Database()
+
+# Register the users blueprint
+app.register_blueprint(users_bp)
+
+if __name__ == '__main__':
+    app.run()
+```
+
+**database.py**
+```python
+from pymongo import MongoClient
+from models import User
+
+class Database:
+    def __init__(self):
+        self.client = MongoClient('mongodb://localhost:27017/')
+        self.db = self.client['AddressBook']
+        self.users_collection = self.db['Users']
+
+    def get_users(self):
+        users = self.users_collection.find()
+        return [User(**user) for user in users]
+
+    def get_user(self, user_id):
+        user = self.users_collection.find_one({'_id': user_id})
+        if user:
+            return User(**user)
+        return None
+
+    def add_user(self, user):
+        user_id = self.users_collection.insert_one(user.to_dict()).inserted_id
+        return str(user_id)
+
+    def update_user(self, user_id, updated_user):
+        result = self.users_collection.update_one({'_id': user_id}, {'$set': updated_user.to_dict()})
+        return result.modified_count > 0
+
+    def delete_user(self, user_id):
+        result = self.users_collection.delete_one({'_id': user_id})
+        return result.deleted_count > 0
+```
+
+**models.py**
+```python
+from dataclasses import dataclass
+
+@dataclass
+class PrimaryAddress:
+    street_address: str
+    city: str
+    province: str
+    postal_code: str
+
+@dataclass
+class User:
+    first_name: str
+    last_name: str
+    primary_address: PrimaryAddress
+
+    def to_dict(self):
+        return {
+            'first_name': self.first_name,
+            'last_name': self.last_name,
+            'primary_address': {
+                'street_address': self.primary_address.street_address,
+                'city': self.primary_address.city,
+                'province': self.primary_address.province,
+                'postal_code': self.primary_address.postal_code
+            }
+        }
+```
+
+**routes.py**
+```python
+from flask import Blueprint, jsonify, request
+from database import db
+from models import User
+
+users_bp = Blueprint('users', __name__, url_prefix='/api/users')
+
+@users_bp.route('/', methods=['GET'])
+def get_users():
+    users = db.get_users()
+    return jsonify([user.to_dict() for user in users])
+
+@users_bp.route('/', methods=['POST'])
+def add_user():
+    data = request.get_json()
+    user = User(
+        first_name=data['first_name'],
+        last_name=data['last_name'],
+        primary_address=User.PrimaryAddress(
+            street_address=data['primary_address']['street_address'],
+            city=data['primary_address']['city'],
+            province=data['primary_address']['province'],
+            postal_code=data['primary_address']['postal_code']
+        )
+    )
+    user_id = db.add_user(user)
+    return jsonify({'user_id': user_id})
+
+@users_bp.route('/<user_id>', methods=['PUT'])
+def update_user(user_id):
+    data = request.get_json()
+    updated_user = User(
+        first_name=data['first_name'],
+        last_name=data['last_name'],
+        primary_address=User.PrimaryAddress(
+            street_address=data['primary_address']['street_address'],
+            city=data['primary_address']['city'],
+            province=data['primary_address']['province'],
+            postal_code=data['primary_address']['postal_code']
+        )
+    )
+    success = db.update_user(user_id, updated_user)
+    return jsonify({'success': success})
+
+@users_bp.route('/<user_id>', methods=['DELETE'])
+def delete_user(user_id):
+    success = db.delete_user(user_id)
+    return jsonify({'success': success})
+```
+
+**App.js**
+```javascript
+import React, { useState, useEffect } from 'react';
+import UserList from './UserList';
+import UserForm from './UserForm';
+import api from './api';
+
+function App() {
+  const [users, setUsers] = useState([]);
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  const fetchUsers = async () => {
+    const response = await api.getUsers();
+    setUsers(response.data);
+  };
+
+  const addUser = async (user) => {
+    const response = await api.addUser(user);
+    if (response.data.user_id) {
+      fetchUsers();
+    }
+  };
+
+  const updateUser = async (user) => {
+    const response = await api.updateUser(user._id, user);
+    if (response.data.success) {
+      fetchUsers();
+    }
+  };
+
+  const deleteUser = async (user) => {
+    const response = await api.deleteUser(user._id);
+    if (response.data.success) {
+      fetchUsers();
+    }
+  };
+
+  return (
+    <div className="container">
+      <h1>Address Book</h1>
+      <UserList users={users} onDelete={deleteUser} onUpdate={updateUser} />
+      <UserForm onAdd={addUser} />
+    </div>
+  );
+}
+
+export default App;
+```
+
+**UserList.js**
+```javascript
+import React, { useState } from 'react';
+import UserItem from './UserItem';
+
+function UserList({ users, onDelete, onUpdate }) {
+  const [currentPage, setCurrentPage] = useState(1);
+  const usersPerPage = 10;
+  const totalPages = Math.ceil(users.length / usersPerPage);
+
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+  };
+
+  const handleDelete = (user) => {
+    onDelete(user);
+  };
+
+  const handleUpdate = (user) => {
+    onUpdate(user);
+  };
+
+  const renderUsers = () => {
+    const startIndex = (currentPage - 1) * usersPerPage;
+    const endIndex = startIndex + usersPerPage;
+    const currentUsers = users.slice(startIndex, endIndex);
+
+    return currentUsers.map((user) => (
+      <UserItem key={user._id} user={user} onDelete={handleDelete} onUpdate={handleUpdate} />
+    ));
+  };
+
+  const renderPagination = () => {
+    const pages = [];
+
+    for (let i = 1; i <= totalPages; i++) {
+      pages.push(
+        <li key={i} className={`page-item ${currentPage === i ? 'active' : ''}`}>
+          <button className="page-link" onClick={() => handlePageChange(i)}>
+            {i}
+          </button>
+        </li>
+      );
+    }
+
+    return (
+      <nav>
+        <ul className="pagination">
+          <li className={`page-item ${currentPage === 1 ? 'disabled' : ''}`}>
+            <button className="page-link" onClick={() => handlePageChange(currentPage - 1)}>
+              Previous
+            </button>
+          </li>
+          {pages}
+          <li className={`page-item ${currentPage === totalPages ? 'disabled' : ''}`}>
+            <button className="page-link" onClick={() => handlePageChange(currentPage + 1)}>
+              Next
+            </button>
+          </li>
+        </ul>
+      </nav>
+    );
+  };
+
+  return (
+    <div>
+      <h2>User List</h2>
+      <table className="table">
+        <thead>
+          <tr>
+            <th>First Name</th>
+            <th>Last Name</th>
+            <th>Street Address</th>
+            <th>City</th>
+            <th>Province</th>
+            <th>Postal Code</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {renderUsers()}
+        </tbody>
+      </table>
+      {renderPagination()}
+    </div>
+  );
+}
+
+export default UserList;
+```
+
+**UserForm.js**
+```javascript
+import React, { useState } from 'react';
+
+function UserForm({ onAdd }) {
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [streetAddress, setStreetAddress] = useState('');
+  const [city, setCity] = useState('');
+  const [province, setProvince] = useState('');
+  const [postalCode, setPostalCode] = useState('');
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+
+    const user = {
+      first_name: firstName,
+      last_name: lastName,
+      primary_address: {
+        street_address: streetAddress,
+        city: city,
+        province: province,
+        postal_code: postalCode
+      }
+    };
+
+    onAdd(user);
+
+    setFirstName('');
+    setLastName('');
+    setStreetAddress('');
+    setCity('');
+    setProvince('');
+    setPostalCode('');
+  };
+
+  return (
+    <div>
+      <h2>Add User</h2>
+      <form onSubmit={handleSubmit}>
+        <div className="form-group">
+          <label htmlFor="firstName">First Name</label>
+          <input
+            type="text"
+            className="form-control"
+            id="firstName"
+            value={firstName}
+            onChange={(e) => setFirstName(e.target.value)}
+            required
+          />
+        </div>
+        <div className="form-group">
+          <label htmlFor="lastName">Last Name</label>
+          <input
+            type="text"
+            className="form-control"
+            id="lastName"
+            value={lastName}
+            onChange={(e) => setLastName(e.target.value)}
+            required
+          />
+        </div>
+        <div className="form-group">
+          <label htmlFor="streetAddress">Street Address</label>
+          <input
+            type="text"
+            className="form-control"
+            id="streetAddress"
+            value={streetAddress}
+            onChange={(e) => setStreetAddress(e.target.value)}
+            required
+          />
+        </div>
+        <div className="form-group">
+          <label htmlFor="city">City</label>
+          <input
+            type="text"
+            className="form-control"
+            id="city"
+            value={city}
+            onChange={(e) => setCity(e.target.value)}
+            required
+          />
+        </div>
+        <div className="form-group">
+          <label htmlFor="province">Province</label>
+          <input
+            type="text"
+            className="form-control"
+            id="province"
+            value={province}
+            onChange={(e) => setProvince(e.target.value)}
+            required
+          />
+        </div>
+        <div className="form-group">
+          <label htmlFor="postalCode">Postal Code</label>
+          <input
+            type="text"
+            className="form-control"
+            id="postalCode"
+            value={postalCode}
+            onChange={(e) => setPostalCode(e.target.value)}
+            required
+          />
+        </div>
+        <button type="submit" className="btn btn-primary">Add</button>
+      </form>
+    </div>
+  );
+}
+
+export default UserForm;
+```
+
+**UserItem.js**
+```javascript
+import React, { useState } from 'react';
+
+function UserItem({ user, onDelete, onUpdate }) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [firstName, setFirstName] = useState(user.first_name);
+  const [lastName, setLastName] = useState(user.last_name);
+  const [streetAddress, setStreetAddress] = useState(user.primary_address.street_address);
+  const [city, setCity] = useState(user.primary_address.city);
+  const [province, setProvince] = useState(user.primary_address.province);
+  const [postalCode, setPostalCode] = useState(user.primary_address.postal_code);
+
+  const handleEdit = () => {
+    setIsEditing(true);
+  };
+
+  const handleCancel = () => {
+    setIsEditing(false);
+    setFirstName(user.first_name);
+    setLastName(user.last_name);
+    setStreetAddress(user.primary_address.street_address);
+    setCity(user.primary_address.city);
+    setProvince(user.primary_address.province);
+    setPostalCode(user.primary_address.postal_code);
+  };
+
+  const handleUpdate = () => {
+    const updatedUser = {
+      ...user,
+      first_name: firstName,
+      last_name: lastName,
+      primary_address: {
+        ...user.primary_address,
+        street_address: streetAddress,
+        city: city,
+        province: province,
+        postal_code: postalCode
+      }
+    };
+
+    onUpdate(updatedUser);
+    setIsEditing(false);
+  };
+
+  const handleDelete = () => {
+    onDelete(user);
+  };
+
+  return (
+    <tr>
+      <td>
+        {isEditing ? (
+          <input
+            type="text"
+            className="form-control"
+            value={firstName}
+            onChange={(e) => setFirstName(e.target.value)}
+            required
+          />
+        ) : (
+          user.first_name
+        )}
+      </td>
+      <td>
+        {isEditing ? (
+          <input
+            type="text"
+            className="form-control"
+            value={lastName}
+            onChange={(e) => setLastName(e.target.value)}
+            required
+          />
+        ) : (
+          user.last_name
+        )}
+      </td>
+      <td>
+        {isEditing ? (
+          <input
+            type="text"
+            className="form-control"
+            value={streetAddress}
+            onChange={(e) => setStreetAddress(e.target.value)}
+            required
+          />
+        ) : (
+          user.primary_address.street_address
+        )}
+      </td>
+      <td>
+        {isEditing ? (
+          <input
+            type="text"
+            className="form-control"
+            value={city}
+            onChange={(e) => setCity(e.target.value)}
+            required
+          />
+        ) : (
+          user.primary_address.city
+        )}
+      </td>
+      <td>
+        {isEditing ? (
+          <input
+            type="text"
+            className="form-control"
+            value={province}
+            onChange={(e) =>

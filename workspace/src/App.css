@@ -1,0 +1,33 @@
+/* src/App.css */
+
+.app-container {
+    max-width: 90%;
+    margin: 5px auto;
+    padding: 20px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  }
+  
+  .app-heading {
+    text-align: center!important;
+    margin-bottom: 20px;
+  }
+  
+  .data-list {
+    list-style: none;
+    padding: 0;
+  }
+  
+  .data-item {
+    margin-bottom: 8px;
+    padding: 10px;
+    background-color: #f9f9f9;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+  
+  input {
+    margin-right: 2px;
+  }

@@ -6,7 +6,7 @@ import { get_Users, update_User, add_User, delete_User } from './api';
 import axios from 'axios';
 
 
-const API_BASE_URL = 'http://localhost:5000/api/users';
+const API_BASE_URL = 'http://gpt-eng-01.lottotry.com:5000/api/users';
 
 function App() {
   const [data, setData] = useState([]);

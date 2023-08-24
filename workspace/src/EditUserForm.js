@@ -16,7 +16,6 @@ function EditUserForm({ user, onCancelEdit }) {
     // Make a PUT request to update the user's data
     //await axios.put(`${API_BASE_URL}/users/${user._id}`, formData);
     const response = await update_User(user._id, formData);
-    console.log('response.success = ', response.success)
 
     onCancelEdit();
     

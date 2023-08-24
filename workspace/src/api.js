@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // Define the base URL for your API
-const API_BASE_URL = 'http://lottotry.com:5000/api/users';
+const API_BASE_URL = 'http://localhost:5000/api/users';
 
 
 // Function to get user data

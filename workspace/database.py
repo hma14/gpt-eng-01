@@ -4,7 +4,7 @@ from bson import ObjectId
 
 class Database:
     def __init__(self):
-        self.client = MongoClient('mongodb://lottotry.com:27017')
+        self.client = MongoClient('mongodb://localhost:27017')
         self.db = self.client['AddressBook']
         self.users_collection = self.db['Users']
 

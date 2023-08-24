@@ -17,4 +17,4 @@ def index():
     return "Hi there!"
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(host='lottotry.com', debug=True)

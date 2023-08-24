@@ -16,7 +16,6 @@ function UserList({ data, onDelete, onUpdate }) {
   };
 
   const handleUpdate = (user) => {
-    console.log('user._id = ', user._id)
     onUpdate(user);
   };
 

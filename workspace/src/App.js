@@ -6,8 +6,6 @@ import { get_Users, update_User, add_User, delete_User } from './api';
 import axios from 'axios';
 
 
-const API_BASE_URL = 'http://gpt-eng-01.lottotry.com:5000/api/users';
-
 function App() {
   const [data, setData] = useState([]);
   const [selectedUser, setSelectedUser] = useState(null);
@@ -60,22 +58,22 @@ function App() {
     setSelectedUser(user);
   };
 
-  const handleUpdate = async (selectedUser) => {
-    try {
+  // const handleUpdate = async (selectedUser) => {
+  //   try {
       
-      // Make a PUT request to update the user's data
-      const response = await axios.put(`${API_BASE_URL}/${selectedUser._id}`, selectedUser);
-      // Update the users list with the updated user
-      const updatedUsers = users.map((user) =>
-        user._id === selectedUser._id ? response.data : user
-      );
-      setUsers(updatedUsers);
-      setSelectedUser(null); // Clear the selected user
-      fetchUsers();
-    } catch (error) {
-      console.error('Error updating user:', error);
-    }
-  };
+  //     // Make a PUT request to update the user's data
+  //     const response = await axios.put(`${API_BASE_URL}/${selectedUser._id}`, selectedUser);
+  //     // Update the users list with the updated user
+  //     const updatedUsers = users.map((user) =>
+  //       user._id === selectedUser._id ? response.data : user
+  //     );
+  //     setUsers(updatedUsers);
+  //     setSelectedUser(null); // Clear the selected user
+  //     fetchUsers();
+  //   } catch (error) {
+  //     console.error('Error updating user:', error);
+  //   }
+  // };
 
   return (
     <div className="container">

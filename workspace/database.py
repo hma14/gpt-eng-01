@@ -27,11 +27,8 @@ class Database:
         return str(user_id)
 
     def update_user(self, user_id, updated_user):
-        print('to_dict() = ', updated_user.to_dict())
         updated_user._id = ObjectId(updated_user._id)
         result = self.users_collection.update_one({'_id': updated_user._id}, {'$set': updated_user.to_dict()})
-        print('result.modified_count = ', result.modified_count)
-        print('result.raw_result = ', result.raw_result)
         return result.modified_count > 0
 
     def delete_user(self, user_id):
